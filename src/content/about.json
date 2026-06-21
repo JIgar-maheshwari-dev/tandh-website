@@ -1,0 +1,32 @@
+{
+  "heroEyebrow": "Our Roots",
+  "heroTitle": "Woven in Faradi, Carried Everywhere",
+  "heroSubtitle": "Three generations of handloom weaving from a single village in Kutch.",
+  "sections": [
+    {
+      "heading": "Where it begins",
+      "body": "tandh studio began on a pit-loom in Faradi village, Mandvi, where our weaver has spent a lifetime turning rain-fed Kala cotton into cloth. What started as one family's craft is now a small, direct line between that loom and the people who wear what it makes — no middlemen, no mass production, no shortcuts on the weave."
+    },
+    {
+      "heading": "The cotton itself",
+      "body": "Kala cotton is indigenous to Kutch and grows without irrigation or pesticides, surviving on rainfall alone in one of India's most arid regions. It is shorter-stapled and coarser than commercial hybrid cotton, which is exactly why it has been overlooked by industrial mills — and exactly why it produces the textured, durable, breathable cloth we build everything around."
+    },
+    {
+      "heading": "The weave",
+      "body": "Every Bhujodi extra-weft motif — the triangles, chevrons, and diamond grids you see across our fabrics — is woven directly into the structure of the cloth on a traditional pit-loom, not printed or embroidered afterward. A single metre takes several hours of focused, manual work."
+    },
+    {
+      "heading": "The dye",
+      "body": "Where our pieces are dyed rather than left in their natural off-white, we use plant-based mordants from native botanicals — primarily Babool and Khejri bark — instead of synthetic dye baths. The earthy, muted tones you see are a direct result of this: no two dye lots are perfectly identical, and we consider that a feature of the process, not a flaw."
+    },
+    {
+      "heading": "Why it matters to us",
+      "body": "This is a family livelihood before it is a brand. Every order placed here goes directly back to the loom it came from. We're building tandh studio slowly and deliberately, the same way the cloth itself is made."
+    }
+  ],
+  "stats": [
+    { "label": "Generations weaving", "value": "3" },
+    { "label": "Village of origin", "value": "Faradi, Kutch" },
+    { "label": "Irrigation used", "value": "0" }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "bhujodi-shirt-01",
+  "title": "Indigo Bhujodi Shirt",
+  "subtitle": "Hand-loomed Kala Cotton, Natural Indigo",
+  "price": 2800,
+  "priceUnit": "per piece",
+  "currency": "INR",
+  "category": "shirts",
+  "description": "A relaxed-fit shirt cut from indigo-dyed Kala cotton, woven with a subtle Bhujodi extra-weft border along the cuffs and hem. Breathable, slightly textured, and built to soften with every wash.",
+  "craftStory": "The indigo used here is built up over multiple natural dye baths, the traditional way — deeper, more uneven, and far slower than synthetic indigo dyeing. Cut and stitched by a small tailoring partner working exclusively with our handloom cloth.",
+  "weaveType": "Bhujodi extra-weft border, plain-weave body",
+  "dyeProcess": "Natural indigo, multiple dye-dip process for depth of colour",
+  "careInstructions": "Cold hand-wash inside-out for the first 3 washes to set the indigo. Shade dry. Some colour transfer onto light fabrics is normal with natural indigo.",
+  "details": [
+    "Composition: 100% Kala Cotton",
+    "Fit: Relaxed, regular collar",
+    "Hand-loomed Bhujodi border detail at cuffs and hem"
+  ],
+  "tags": ["Kala Cotton", "Bhujodi", "Natural Indigo", "Handloom", "Kutch"],
+  "badges": ["100% Organic", "Artisan Made", "Zero Chemical Dyes"],
+  "moq": 1,
+  "moqUnit": "pieces",
+  "moqStep": 1,
+  "stock": 14,
+  "images": ["image1.jpg", "image2.jpg"],
+  "featured": true,
+  "newArrival": true,
+  "sizes": ["S", "M", "L", "XL"]
+}

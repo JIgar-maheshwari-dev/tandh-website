@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Work Sans", system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #F6F1E7;
+  color: #2A2118;
+}
+
+/* Woven extra-weft motif — the site's signature repeating pattern,
+   echoing Bhujodi chevron/diamond weave structures. Used sparingly
+   as a divider and texture, never as decoration-for-its-own-sake. */
+.weave-motif {
+  background-image: repeating-linear-gradient(
+      45deg,
+      rgba(184, 92, 56, 0.10) 0px,
+      rgba(184, 92, 56, 0.10) 2px,
+      transparent 2px,
+      transparent 14px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(47, 60, 94, 0.10) 0px,
+      rgba(47, 60, 94, 0.10) 2px,
+      transparent 2px,
+      transparent 14px
+    );
+}
+
+.weave-divider {
+  height: 10px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    #B85C38 0px,
+    #B85C38 3px,
+    transparent 3px,
+    transparent 10px,
+    #2F3C5E 10px,
+    #2F3C5E 13px,
+    transparent 13px,
+    transparent 20px
+  );
+  opacity: 0.35;
+}
+
+/* Safe-area support for notched phones */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Touch targets */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Hide scrollbar on horizontal carousels but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Accessible focus ring, kept visible (not removed) per a11y baseline */
+:focus-visible {
+  outline: 2px solid #2F3C5E;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

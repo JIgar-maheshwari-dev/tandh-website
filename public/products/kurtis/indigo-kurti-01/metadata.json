@@ -1,0 +1,29 @@
+{
+  "id": "indigo-kurti-01",
+  "title": "Babool-Dyed Straight Kurti",
+  "subtitle": "Earthy Terracotta Tone, Kala Cotton",
+  "price": 2200,
+  "priceUnit": "per piece",
+  "currency": "INR",
+  "category": "kurtis",
+  "description": "A straight-cut kurti in Kala cotton, dyed a warm terracotta using Babool bark mordant. Minimal detailing lets the texture of the handloom cloth carry the piece.",
+  "craftStory": "Babool and Khejri bark dyeing is a slow, small-batch process — each lot of cloth picks up slightly different depth of tone depending on the bark, the water, and the season. We don't try to standardise this; it's part of what makes the piece naturally made rather than manufactured.",
+  "weaveType": "Plain-weave Kala cotton, handloom",
+  "dyeProcess": "Babool bark natural mordant dye",
+  "careInstructions": "Cold hand-wash separately, shade dry, light steam iron if needed.",
+  "details": [
+    "Composition: 100% Kala Cotton",
+    "Length: Knee-length, straight cut",
+    "Side slits for ease of movement"
+  ],
+  "tags": ["Kala Cotton", "Natural dye", "Babool bark", "Handloom", "Kutch"],
+  "badges": ["100% Organic", "Rain-fed Crop", "Zero Chemical Dyes"],
+  "moq": 1,
+  "moqUnit": "pieces",
+  "moqStep": 1,
+  "stock": 9,
+  "images": ["image1.jpg", "image2.jpg"],
+  "featured": false,
+  "newArrival": true,
+  "sizes": ["S", "M", "L", "XL"]
+}

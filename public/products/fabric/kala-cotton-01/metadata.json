@@ -1,0 +1,30 @@
+{
+  "id": "kala-cotton-01",
+  "title": "Kala Cotton — Natural Weave",
+  "subtitle": "Bhujodi Extra-Weft Motif, Hand-Spun",
+  "price": 1200,
+  "priceUnit": "per meter",
+  "currency": "INR",
+  "category": "fabric",
+  "description": "Woven on traditional pit-looms in Bhujodi village, this Kala Cotton fabric carries the weight of centuries. The extra-weft geometric motifs — triangles, chevrons, and diamond grids — are woven directly into the base cloth, not printed or embroidered. Each meter takes a skilled weaver approximately four hours to complete.",
+  "craftStory": "Kala Cotton is a drought-resistant, rain-fed variety grown exclusively in the Kutch district of Gujarat. Unlike hybrid cottons, it requires no irrigation or pesticides, making it one of the most ecologically sound fibres in the world. Our weavers are second and third-generation artisans from the Vankar community of Bhujodi.",
+  "weaveType": "Bhujodi extra-weft, hand-thrown shuttle pit-loom",
+  "dyeProcess": "Left in its natural off-white state — undyed, to show the raw fibre. Other colourways in this line use Babool bark mordant dyeing.",
+  "careInstructions": "Cold hand-wash separately. Shade dry only — avoid direct sunlight and tumble drying. Iron on medium heat, reverse side.",
+  "details": [
+    "Width: 44 inches",
+    "Weight: 180 GSM",
+    "Composition: 100% Kala Cotton",
+    "Wash Care: Cold hand-wash, shade dry",
+    "Dye: Naturally mordanted plant-based dyes"
+  ],
+  "tags": ["Kala Cotton", "Bhujodi", "Extra-weft", "Natural dye", "Handloom", "Kutch"],
+  "badges": ["100% Organic", "Rain-fed Crop", "Artisan Made"],
+  "moq": 2,
+  "moqUnit": "meters",
+  "moqStep": 0.5,
+  "stock": 24,
+  "images": ["image1.jpg", "image2.jpg", "image3.jpg"],
+  "featured": true,
+  "newArrival": false
+}
