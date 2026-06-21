@@ -261,6 +261,33 @@ or without code changes.
 
 ---
 
+## Homepage hero & category photos
+
+Both are file-drop configurable — no code changes needed:
+
+- **Hero background** (behind the "Explore Earth-Born Kala Cotton"
+  text): drop a video at `public/hero/hero-video.mp4` (or `.webm`), or
+  a photo at `public/hero/hero-image.jpg` (`.jpeg`/`.png`/`.webp` also
+  work). Video takes priority if both exist. Neither file present →
+  falls back to the built-in generated pattern automatically.
+- **Fabrics / Apparel card backgrounds** on the homepage: drop a photo
+  at `public/category-covers/<slug>.jpg`, where `<slug>` matches the
+  category folder name under `public/products/` (so `fabric.jpg` and
+  `shirts.jpg` for the current categories). Missing file for a given
+  category → that card just keeps the woven-pattern background.
+
+Full naming details and recommended dimensions are in the README.md
+files inside each of those two folders.
+
+**One thing to know about timing:** locally with `npm run dev`, a
+dropped-in file shows up the moment you refresh the page. On a
+deployed copy (Render, etc.), the homepage is built once at deploy
+time, so a new photo won't appear until the next deploy — which
+already happens automatically on every `git push` (see DEPLOY.md), so
+in practice it's: commit, push, wait for the build to finish, refresh.
+
+---
+
 ## Customizing brand content
 
 - **About page copy**: edit `src/content/about.json` — headings,
