@@ -35,9 +35,14 @@ export function ProductCard({ product }: { product: Product }) {
               />
             </>
           )}
-          {product.newArrival && (
+          {product.newArrival && product.stock !== 0 && (
             <span className="absolute top-2 left-2 bg-indigo text-weave text-[10px] uppercase tracking-widest2 px-2 py-1 rounded">
               New
+            </span>
+          )}
+          {product.stock === 0 && (
+            <span className="absolute top-2 left-2 bg-bark text-weave text-[10px] uppercase tracking-widest2 px-2 py-1 rounded">
+              Out of Stock
             </span>
           )}
         </div>

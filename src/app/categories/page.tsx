@@ -3,8 +3,8 @@ import { getAllProducts, getCategories } from "@/lib/productLoader";
 
 export const metadata = { title: "All Products — tandh studio" };
 
-export default function AllProductsPage() {
-  const products = getAllProducts();
+export default async function AllProductsPage() {
+  const products = await getAllProducts();
   const categories = getCategories();
 
   return (

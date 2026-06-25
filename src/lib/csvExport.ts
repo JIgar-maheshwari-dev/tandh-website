@@ -1,10 +1,15 @@
 // Server-only. Keeps a plain-text data/users.csv and data/orders.csv in
-// sync with the SQLite database on every write, so you can open them
-// directly in Excel/Google Sheets without needing any database tool or
-// server access — just the files in the project's /data folder.
+// sync with the Postgres database on every write, so you can open them
+// directly in Excel/Google Sheets without needing any database tool —
+// just the files in the project's /data folder. These are a generated
+// export, not the source of truth — the database is authoritative, so
+// it's fine if this local file doesn't survive a server restart on an
+// ephemeral host; it's regenerated fresh from the database the moment
+// anything writes again, or whenever the admin export endpoints below
+// are hit.
 import fs from "fs";
 import path from "path";
-import { getDb } from "./db";
+import { query } from "./db";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const USERS_CSV = path.join(DATA_DIR, "users.csv");
@@ -24,24 +29,36 @@ function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
   return [header, ...lines].join("\n") + "\n";
 }
 
-export function exportUsersToCsv() {
-  const db = getDb();
-  const rows = db
-    .prepare(`SELECT id, name, email, provider, created_at FROM users ORDER BY created_at DESC`)
-    .all() as Record<string, unknown>[];
-  const csv = toCsv(rows, ["id", "name", "email", "provider", "created_at"]);
-  fs.writeFileSync(USERS_CSV, csv, "utf-8");
+function safeWrite(filePath: string, content: string) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(filePath, content, "utf-8");
+  } catch (err) {
+    // On some read-only deployment filesystems this write can fail —
+    // that's fine, the admin export endpoints regenerate from the
+    // database directly rather than relying on this file existing.
+    console.warn(`[csvExport] Could not write ${filePath}:`, err);
+  }
 }
 
-export function exportOrdersToCsv() {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT order_id, user_email, created_at, payment_method, amount, currency, status,
-              upi_utr, razorpay_payment_id, items_json, customer_json
-       FROM orders ORDER BY created_at DESC`
-    )
-    .all() as Record<string, unknown>[];
+export async function getUsersCsv(): Promise<string> {
+  const rows = await query(
+    `SELECT id, name, email, provider, created_at FROM users ORDER BY created_at DESC`
+  );
+  return toCsv(rows, ["id", "name", "email", "provider", "created_at"]);
+}
+
+export async function exportUsersToCsv() {
+  const csv = await getUsersCsv();
+  safeWrite(USERS_CSV, csv);
+}
+
+export async function getOrdersCsv(): Promise<string> {
+  const rows = await query(
+    `SELECT order_id, user_email, created_at, payment_method, amount, currency, status,
+            upi_utr, razorpay_payment_id, items_json, customer_json
+     FROM orders ORDER BY created_at DESC`
+  );
 
   // Flatten items + address into readable single-cell summaries rather
   // than raw JSON, so the sheet is actually legible at a glance.
@@ -89,7 +106,7 @@ export function exportOrdersToCsv() {
     };
   });
 
-  const csv = toCsv(flattened, [
+  return toCsv(flattened, [
     "order_id",
     "customer_email",
     "created_at",
@@ -102,5 +119,9 @@ export function exportOrdersToCsv() {
     "upi_utr",
     "razorpay_payment_id",
   ]);
-  fs.writeFileSync(ORDERS_CSV, csv, "utf-8");
+}
+
+export async function exportOrdersToCsv() {
+  const csv = await getOrdersCsv();
+  safeWrite(ORDERS_CSV, csv);
 }

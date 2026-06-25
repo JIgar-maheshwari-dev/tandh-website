@@ -5,8 +5,8 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { WeaveDivider } from "@/components/ui/WeaveDivider";
 import { getFeaturedProducts } from "@/lib/productLoader";
 
-export default function HomePage() {
-  const featured = getFeaturedProducts(8);
+export default async function HomePage() {
+  const featured = await getFeaturedProducts(8);
 
   return (
     <div>

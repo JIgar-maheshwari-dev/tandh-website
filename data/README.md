@@ -1,17 +1,18 @@
-This folder is intentionally empty in a fresh copy of the project.
+This folder is intentionally mostly empty in a fresh copy of the
+project. The real database (users, orders, live stock) lives in
+Postgres, not here — see DATABASE_URL in .env.local.
 
-Once you run the app and people sign up / place orders, these files
-will appear here automatically:
+A couple of things still appear here at runtime, though:
 
-- `tandh.db` — the SQLite database (users + orders). Open it with any
-  SQLite browser tool (e.g. "DB Browser for SQLite") or the `sqlite3`
-  CLI if you want to run raw SQL against it.
-- `users.csv` — every registered user (id, name, email, provider,
-  signup date), regenerated on every signup. Open directly in Excel or
-  Google Sheets.
-- `orders.csv` — every order placed, with items, shipping address, and
-  payment status, regenerated on every order/payment update. Open
-  directly in Excel or Google Sheets.
+- `.nextauth-secret` — only created if you haven't set NEXTAUTH_SECRET
+  yourself, as a local-dev convenience so sessions survive a server
+  restart. Never relied on in production — set NEXTAUTH_SECRET for real
+  deployments.
+- `users.csv` / `orders.csv` — a convenience export mirrored from the
+  database on every signup/order, so you can open them directly in
+  Excel/Sheets. These are NOT the source of truth (Postgres is) — if
+  they're missing or stale on some host, the admin export endpoints
+  (`/api/admin/export/users` and `/api/admin/export/orders`) regenerate
+  the same content directly from the database on demand.
 
-None of these are committed to version control (see .gitignore) since
-they contain real customer data once the site is live.
+None of these are committed to version control (see .gitignore).

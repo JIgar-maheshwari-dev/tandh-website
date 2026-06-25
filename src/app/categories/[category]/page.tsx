@@ -6,12 +6,12 @@ export function generateStaticParams() {
   return getCategories().map((category) => ({ category }));
 }
 
-export default function CategoryPage({ params }: { params: { category: string } }) {
+export default async function CategoryPage({ params }: { params: { category: string } }) {
   const categories = getCategories();
   if (!categories.includes(params.category)) {
     notFound();
   }
-  const products = getAllProducts();
+  const products = await getAllProducts();
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">

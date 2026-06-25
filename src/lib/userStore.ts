@@ -1,8 +1,8 @@
 // Server-only. All user accounts — whether created via Google sign-in
-// or email/password — live in the `users` table in data/tandh.db, and
-// are mirrored to data/users.csv on every write.
+// or email/password — live in the `users` table in your Postgres
+// database, and are mirrored to data/users.csv on every write.
 import { randomUUID } from "crypto";
-import { getDb } from "./db";
+import { query } from "./db";
 import { exportUsersToCsv } from "./csvExport";
 
 export interface UserRecord {
@@ -21,37 +21,35 @@ function rowToUser(row: Record<string, unknown>): UserRecord {
     email: String(row.email),
     passwordHash: (row.password_hash as string) ?? null,
     provider: row.provider as "google" | "credentials",
-    createdAt: String(row.created_at),
+    createdAt: new Date(row.created_at as string).toISOString(),
   };
 }
 
-export function findUserByEmail(email: string): UserRecord | null {
-  const db = getDb();
-  const row = db.prepare(`SELECT * FROM users WHERE email = ?`).get(email.toLowerCase().trim());
-  return row ? rowToUser(row as Record<string, unknown>) : null;
+export async function findUserByEmail(email: string): Promise<UserRecord | null> {
+  const rows = await query(`SELECT * FROM users WHERE email = $1`, [email.toLowerCase().trim()]);
+  return rows[0] ? rowToUser(rows[0]) : null;
 }
 
-export function findUserById(id: string): UserRecord | null {
-  const db = getDb();
-  const row = db.prepare(`SELECT * FROM users WHERE id = ?`).get(id);
-  return row ? rowToUser(row as Record<string, unknown>) : null;
+export async function findUserById(id: string): Promise<UserRecord | null> {
+  const rows = await query(`SELECT * FROM users WHERE id = $1`, [id]);
+  return rows[0] ? rowToUser(rows[0]) : null;
 }
 
 /** Used by the email/password signup flow. */
-export function createCredentialsUser(params: {
+export async function createCredentialsUser(params: {
   name: string;
   email: string;
   passwordHash: string;
-}): UserRecord {
-  const db = getDb();
+}): Promise<UserRecord> {
   const id = randomUUID();
-  const createdAt = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO users (id, name, email, password_hash, provider, created_at)
-     VALUES (?, ?, ?, ?, 'credentials', ?)`
-  ).run(id, params.name, params.email.toLowerCase().trim(), params.passwordHash, createdAt);
-  exportUsersToCsv();
-  return { id, name: params.name, email: params.email, passwordHash: params.passwordHash, provider: "credentials", createdAt };
+  const rows = await query(
+    `INSERT INTO users (id, name, email, password_hash, provider)
+     VALUES ($1, $2, $3, $4, 'credentials')
+     RETURNING *`,
+    [id, params.name, params.email.toLowerCase().trim(), params.passwordHash]
+  );
+  await exportUsersToCsv();
+  return rowToUser(rows[0]);
 }
 
 /**
@@ -59,23 +57,25 @@ export function createCredentialsUser(params: {
  * Creates a local user record the first time someone signs in with a
  * given Google account, and reuses it on every subsequent sign-in.
  */
-export function upsertGoogleUser(params: { name: string | null; email: string }): UserRecord {
-  const existing = findUserByEmail(params.email);
+export async function upsertGoogleUser(params: {
+  name: string | null;
+  email: string;
+}): Promise<UserRecord> {
+  const existing = await findUserByEmail(params.email);
   if (existing) return existing;
 
-  const db = getDb();
   const id = randomUUID();
-  const createdAt = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO users (id, name, email, password_hash, provider, created_at)
-     VALUES (?, ?, ?, NULL, 'google', ?)`
-  ).run(id, params.name, params.email.toLowerCase().trim(), createdAt);
-  exportUsersToCsv();
-  return { id, name: params.name, email: params.email, passwordHash: null, provider: "google", createdAt };
+  const rows = await query(
+    `INSERT INTO users (id, name, email, password_hash, provider)
+     VALUES ($1, $2, $3, NULL, 'google')
+     RETURNING *`,
+    [id, params.name, params.email.toLowerCase().trim()]
+  );
+  await exportUsersToCsv();
+  return rowToUser(rows[0]);
 }
 
-export function listUsers(): UserRecord[] {
-  const db = getDb();
-  const rows = db.prepare(`SELECT * FROM users ORDER BY created_at DESC`).all();
-  return (rows as Record<string, unknown>[]).map(rowToUser);
+export async function listUsers(): Promise<UserRecord[]> {
+  const rows = await query(`SELECT * FROM users ORDER BY created_at DESC`);
+  return rows.map(rowToUser);
 }

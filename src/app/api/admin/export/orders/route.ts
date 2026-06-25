@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import { exportOrdersToCsv } from "@/lib/csvExport";
+import { getOrdersCsv } from "@/lib/csvExport";
 
 /** See the sibling users export route for the full explanation. */
 export async function GET(req: NextRequest) {
@@ -18,9 +16,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid or missing key." }, { status: 401 });
   }
 
-  exportOrdersToCsv();
-  const filePath = path.join(process.cwd(), "data", "orders.csv");
-  const csv = fs.readFileSync(filePath, "utf-8");
+  const csv = await getOrdersCsv();
 
   return new NextResponse(csv, {
     headers: {

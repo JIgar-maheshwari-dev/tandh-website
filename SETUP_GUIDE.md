@@ -1,8 +1,8 @@
 # Setup Guide — Fresh Ubuntu to Running Site
 
 This walks through everything from a brand-new Ubuntu install to the
-site running locally and reachable from your phone, including the new
-login system and database.
+site running locally and reachable from your phone, including login
+and the database.
 
 ---
 
@@ -13,21 +13,17 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y git curl build-essential
 ```
 
-## 2. Install Node.js 22 (via nvm)
-
-Node 22 is required — not just for Next.js, but specifically because
-this project's database layer uses Node's built-in `node:sqlite`
-module, which needs Node 22.5 or newer.
+## 2. Install Node.js (via nvm)
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc
 
-nvm install 22
-nvm use 22
-nvm alias default 22
+nvm install 20
+nvm use 20
+nvm alias default 20
 
-node -v   # should show v22.x (22.5.0 or higher)
+node -v   # should show v20.x or newer
 npm -v
 ```
 
@@ -45,17 +41,31 @@ cd tandh-studio
 npm install
 ```
 
-## 5. Configure environment variables
+## 5. Set up a free Postgres database (Neon)
+
+The app needs a real Postgres database — there's no "just works
+locally with zero setup" SQLite fallback anymore, since live stock and
+order data need to survive independently of this one machine.
+
+1. Go to [neon.tech](https://neon.tech) → sign up (no credit card).
+2. Create a project (any name/region is fine).
+3. Copy the connection string it gives you — looks like
+   `postgresql://user:password@host/dbname?sslmode=require`.
+
+That's it — the app creates its own tables automatically the first
+time it runs against that connection string.
+
+## 6. Configure environment variables
 
 ```bash
 cp .env.local.example .env.local
 nano .env.local
 ```
 
-At minimum, set these two so the site can even start (required for
-authentication to function at all):
+At minimum, set these so the site can even start:
 
 ```env
+DATABASE_URL=<the connection string from step 5>
 NEXTAUTH_SECRET=<run: openssl rand -base64 32>
 NEXTAUTH_URL=http://localhost:3000
 ```
@@ -74,7 +84,7 @@ configured. Full walkthroughs for both are in **README.md**.
 
 Save with `Ctrl+O`, exit with `Ctrl+X`.
 
-## 6. Run the dev server — reachable from your phone too
+## 7. Run the dev server — reachable from your phone too
 
 ```bash
 npm run dev
@@ -84,24 +94,27 @@ npm run dev
 
 Visit on the laptop: **http://localhost:3000**
 
-The first time the server starts, it creates `data/tandh.db`
-automatically — you don't need to set anything up for the database
-itself.
+The first request creates the database tables automatically — nothing
+else to set up.
 
-## 7. Create your first account and test a full order
+## 8. Create your first account and test a full order
 
 1. Go to `/signup`, create an account with email + password.
-2. Browse to a product, add it to your bag (note the MOQ floor).
+2. Browse to a product, add it to your bag (note the MOQ floor and the
+   stock count shown on the product page).
 3. Go to checkout — fill in shipping details, pick UPI as the payment
    method.
 4. Try the Google Pay / PhonePe / Paytm buttons (they'll only actually
    open an app on a phone that has them installed — on a laptop
    browser they'll typically do nothing visible, which is expected).
 5. Enter any text as a test UTR and submit — you should land on the
-   order confirmation page showing "pending verification."
-6. Check `data/orders.csv` — your test order should be in there.
+   order confirmation page showing "pending verification" and an
+   itemized summary of what you ordered.
+6. Go back to that product page — its stock count should have dropped
+   by however much you ordered.
+7. Check `data/orders.csv` — your test order should be in there too.
 
-## 8. Test on your actual mobile phone (same Wi-Fi)
+## 9. Test on your actual mobile phone (same Wi-Fi)
 
 Find your laptop's local IP:
 ```bash
@@ -131,14 +144,18 @@ sudo ufw allow 3000
 and confirm both devices are on the same Wi-Fi network (not one on
 mobile data).
 
-## 9. Test the production build
+## 10. Test the production build
 
 ```bash
 npm run build
 npm start
 ```
-Same access pattern as step 8 (`npm start` also binds to `0.0.0.0`).
+Same access pattern as step 9 (`npm start` also binds to `0.0.0.0`).
 This is the optimized build — closer to what real visitors will see.
+Note: the build step itself connects to your Postgres database (to
+read live stock for static product pages), so `DATABASE_URL` needs to
+already be set in `.env.local` before running `npm run build`, not
+just before `npm start`.
 
 ---
 
@@ -146,21 +163,24 @@ This is the optimized build — closer to what real visitors will see.
 
 | Symptom | Likely cause |
 |---|---|
-| `node -v` shows below v22.5 | nvm didn't switch correctly — run `nvm use 22` again, or `nvm alias default 22` and open a new terminal |
-| "SQLite is an experimental feature" warning on startup | Expected and harmless — it's Node's own stability label, not an error |
+| Build fails with a database connection error | `DATABASE_URL` not set, or your Neon project is paused/unreachable — double-check `.env.local` |
 | Checkout redirects to `/login` even when logged in | `NEXTAUTH_SECRET` missing/changed — sessions are invalidated whenever that value changes |
 | Google button doesn't appear on `/login` | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` not set — expected if you haven't configured Google yet |
 | Google sign-in redirects to an error page | Authorized redirect URI in Google Cloud Console doesn't exactly match `NEXTAUTH_URL` + `/api/auth/callback/google` |
 | New product doesn't show up | Invalid JSON in `metadata.json` — validate with `cat metadata.json \| python3 -m json.tool` |
-| `data/orders.csv` missing | It only appears after the first order — place one and check again |
+| Stock not decreasing after a test order | Confirm the order actually reached "pending_verification"/"paid" — a `pending_payment` order (abandoned before paying) never decrements stock, by design |
+| `data/orders.csv` missing | It's just a convenience mirror — the real data is in Postgres regardless; place an order and it reappears, or hit `/api/admin/export/orders?key=...` to regenerate it on demand |
 | Phone can't reach `http://<ip>:3000` | Different Wi-Fi networks, firewall, or router AP isolation |
 
 ---
 
 ## What gets created automatically (don't worry about these)
 
-- `data/tandh.db` — created on first run
+- Database tables (`users`, `orders`, `product_stock`) — created in
+  your Postgres database on first run
 - `data/users.csv` — created on first signup
 - `data/orders.csv` — created on first order
+- `data/.nextauth-secret` — only if you didn't set `NEXTAUTH_SECRET`
+  yourself
 
 None of these exist in a fresh copy of the project, and that's normal.

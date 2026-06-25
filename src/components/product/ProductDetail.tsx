@@ -110,6 +110,7 @@ export function ProductDetail({ product }: { product: Product }) {
               moq={product.moq}
               moqStep={product.moqStep}
               moqUnit={product.moqUnit}
+              maxStock={product.stock}
               onChange={setQuantity}
             />
           </div>
@@ -120,9 +121,10 @@ export function ProductDetail({ product }: { product: Product }) {
             <button
               type="button"
               onClick={handleAdd}
-              className="flex-1 bg-indigo text-weave py-3.5 rounded uppercase text-sm tracking-widest2 tap-target hover:bg-indigo-900 transition-colors"
+              disabled={product.stock === 0}
+              className="flex-1 bg-indigo text-weave py-3.5 rounded uppercase text-sm tracking-widest2 tap-target hover:bg-indigo-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {added ? "Added to Bag" : "Add to Bag"}
+              {product.stock === 0 ? "Out of Stock" : added ? "Added to Bag" : "Add to Bag"}
             </button>
             <button
               type="button"
@@ -181,10 +183,11 @@ export function ProductDetail({ product }: { product: Product }) {
           <button
             type="button"
             onClick={handleAdd}
-            className="shrink-0 flex items-center gap-2 bg-indigo text-weave px-5 py-3 rounded uppercase text-xs tracking-widest2 tap-target"
+            disabled={product.stock === 0}
+            className="shrink-0 flex items-center gap-2 bg-indigo text-weave px-5 py-3 rounded uppercase text-xs tracking-widest2 tap-target disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ShoppingBag className="h-4 w-4" />
-            {added ? "Added" : "Add"}
+            {product.stock === 0 ? "Sold Out" : added ? "Added" : "Add"}
           </button>
         </div>
       </div>

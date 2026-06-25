@@ -1,9 +1,13 @@
-// Server-only. Reads /public/products/[category]/[productId]/metadata.json
-// from disk. This is what gives the site its "drop a folder in, it shows up
-// on the site" modular product system — no database, no code changes.
+// Reads /public/products/[category]/[productId]/metadata.json from
+// disk — this is what gives the site its "drop a folder in, it shows
+// up on the site" modular product system. Current stock is overlaid
+// from the database (see stockStore.ts) on top of whatever static
+// metadata.json says, since stock changes as orders come in and
+// metadata.json is otherwise static content.
 import fs from "fs";
 import path from "path";
 import type { Product, ProductMetadata } from "@/types";
+import { getLiveStock, getLiveStockMap } from "./stockStore";
 
 const PRODUCTS_DIR = path.join(process.cwd(), "public", "products");
 
@@ -23,7 +27,7 @@ function listDirs(dir: string): string[] {
     .filter((name) => isDir(path.join(dir, name)));
 }
 
-function loadProductFolder(category: string, productId: string): Product | null {
+function loadProductFolderRaw(category: string, productId: string): Product | null {
   const productDir = path.join(PRODUCTS_DIR, category, productId);
   const metaPath = path.join(productDir, "metadata.json");
   if (!fs.existsSync(metaPath)) return null;
@@ -59,21 +63,32 @@ function loadProductFolder(category: string, productId: string): Product | null 
   }
 }
 
-/** All products across all category folders. */
-export function getAllProducts(): Product[] {
-  const products: Product[] = [];
-  for (const category of listDirs(PRODUCTS_DIR)) {
-    for (const productId of listDirs(path.join(PRODUCTS_DIR, category))) {
-      const product = loadProductFolder(category, productId);
-      if (product) products.push(product);
-    }
-  }
-  return products;
+/** Single product by category + id, with live stock overlaid. */
+export async function getProductById(category: string, productId: string): Promise<Product | null> {
+  const product = loadProductFolderRaw(category, productId);
+  if (!product) return null;
+  const liveStock = await getLiveStock(category, productId, product.stock);
+  return { ...product, stock: liveStock };
 }
 
-/** Single product by category + id (used on the product detail page). */
-export function getProductById(category: string, productId: string): Product | null {
-  return loadProductFolder(category, productId);
+/** All products across all category folders, with live stock overlaid. */
+export async function getAllProducts(): Promise<Product[]> {
+  const raw: Product[] = [];
+  for (const category of listDirs(PRODUCTS_DIR)) {
+    for (const productId of listDirs(path.join(PRODUCTS_DIR, category))) {
+      const product = loadProductFolderRaw(category, productId);
+      if (product) raw.push(product);
+    }
+  }
+
+  const stockMap = await getLiveStockMap(
+    raw.map((p) => ({ category: p.category, productId: p.id, initialStock: p.stock }))
+  );
+
+  return raw.map((p) => ({
+    ...p,
+    stock: stockMap.get(`${p.category}/${p.id}`) ?? p.stock,
+  }));
 }
 
 /** All category folder names currently present on disk. */
@@ -81,15 +96,13 @@ export function getCategories(): string[] {
   return listDirs(PRODUCTS_DIR);
 }
 
-/** Products filtered to one category. */
-export function getProductsByCategory(category: string): Product[] {
-  return listDirs(path.join(PRODUCTS_DIR, category))
-    .map((productId) => loadProductFolder(category, productId))
-    .filter((p): p is Product => p !== null);
+/** Products filtered to one category, with live stock overlaid. */
+export async function getProductsByCategory(category: string): Promise<Product[]> {
+  const all = await getAllProducts();
+  return all.filter((p) => p.category === category);
 }
 
-export function getFeaturedProducts(limit = 8): Product[] {
-  return getAllProducts()
-    .filter((p) => p.featured)
-    .slice(0, limit);
+export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
+  const all = await getAllProducts();
+  return all.filter((p) => p.featured).slice(0, limit);
 }

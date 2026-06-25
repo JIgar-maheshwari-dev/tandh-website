@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "orderId is required." }, { status: 400 });
   }
 
-  const order = getOrder(body.orderId);
+  const order = await getOrder(body.orderId);
   if (!order) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }

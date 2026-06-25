@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getOrder, updateOrder } from "@/lib/orderStore";
+import { decrementStockForOrder } from "@/lib/stockStore";
 
 /**
  * IMPORTANT — read before relying on this in production:
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const existing = getOrder(orderId);
+  const existing = await getOrder(orderId);
   if (!existing) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
@@ -48,10 +49,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This order does not belong to your account." }, { status: 403 });
   }
 
-  const updated = updateOrder(orderId, {
+  // Guard against double-decrementing stock if this is a resubmission
+  // (e.g. correcting a typo'd UTR) rather than the first confirmation.
+  const isFirstConfirmation = existing.status === "pending_payment";
+
+  const updated = await updateOrder(orderId, {
     status: "pending_verification",
     upiUtr: utr.trim(),
   });
+
+  if (isFirstConfirmation) {
+    await decrementStockForOrder(
+      existing.items.map((i) => ({ category: i.category, productId: i.productId, quantity: i.quantity }))
+    );
+  }
 
   return NextResponse.json({ orderId: updated?.orderId, status: updated?.status });
 }

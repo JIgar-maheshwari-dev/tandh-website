@@ -81,7 +81,7 @@ const providers: AuthOptions["providers"] = [
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
-      const user = findUserByEmail(credentials.email);
+      const user = await findUserByEmail(credentials.email);
       if (!user || !user.passwordHash) return null;
       const valid = await bcrypt.compare(credentials.password, user.passwordHash);
       if (!valid) return null;
@@ -113,7 +113,7 @@ export const authOptions: AuthOptions = {
       // the user already exists by the time we get here. Google sign-in
       // needs its first-time-seen local user record created here.
       if (account?.provider === "google" && user.email) {
-        upsertGoogleUser({ name: user.name ?? null, email: user.email });
+        await upsertGoogleUser({ name: user.name ?? null, email: user.email });
       }
       return true;
     },
@@ -122,7 +122,7 @@ export const authOptions: AuthOptions = {
         token.email = user.email;
       }
       if (account?.provider === "google" && token.email) {
-        const local = findUserByEmail(token.email);
+        const local = await findUserByEmail(token.email);
         if (local) token.id = local.id;
       } else if (user?.id) {
         token.id = user.id;

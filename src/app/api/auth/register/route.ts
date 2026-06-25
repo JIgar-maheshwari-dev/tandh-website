@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
   }
 
-  const existing = findUserByEmail(email);
+  const existing = await findUserByEmail(email);
   if (existing) {
     return NextResponse.json(
       { error: "An account with this email already exists. Try logging in instead." },
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = createCredentialsUser({ name, email, passwordHash });
+  const user = await createCredentialsUser({ name, email, passwordHash });
 
   return NextResponse.json({ id: user.id, email: user.email });
 }

@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid cart items." }, { status: 400 });
   }
 
-  const validation = validateCartItems(items as never);
+  const validation = await validateCartItems(items as never);
   if (!validation.valid) {
     return NextResponse.json({ error: validation.errors.join(" ") }, { status: 400 });
   }
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     status: "pending_payment",
   };
 
-  saveOrder(order);
+  await saveOrder(order);
 
   return NextResponse.json({
     orderId: order.orderId,

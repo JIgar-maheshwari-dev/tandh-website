@@ -2,8 +2,9 @@
 
 A complete, mobile-first Next.js e-commerce site for handwoven Kala
 Cotton fabrics and garments from Faradi village, Kutch — folder-based
-product catalog, MOQ enforcement, login-gated checkout, a real SQLite
-database, UPI + Razorpay payments, and auto-generated CSV exports.
+product catalog, MOQ enforcement, login-gated checkout, live stock
+tracking, a Postgres database, UPI + Razorpay payments, and
+auto-generated CSV exports.
 
 For a step-by-step "fresh Ubuntu machine to running site" walkthrough,
 see **SETUP_GUIDE.md**. For deploying to a free, temporary remote host
@@ -18,13 +19,15 @@ the reference for how everything works once it's running.
 |---|---|
 | Product catalog | Folders on disk under `public/products/`, no code changes to add/remove a product |
 | Minimum order quantities | Enforced in the UI *and* re-validated server-side at checkout |
+| Stock tracking | Live count in the database, decremented automatically when an order is confirmed |
 | Login | Required before checkout — email/password or Google, your choice |
-| Database | Real SQLite file at `data/tandh.db` (users + orders) |
-| Spreadsheet access | `data/users.csv` and `data/orders.csv`, auto-regenerated on every write |
+| Database | Postgres (e.g. a free Neon project) — users, orders, and live stock |
+| Spreadsheet access | `data/users.csv` and `data/orders.csv`, plus on-demand admin export endpoints |
 | Payments | UPI (direct-to-app links, no gateway needed) and/or Razorpay (cards, netbanking, automatic confirmation) |
 | Cash on delivery | Does not exist anywhere in this codebase, by design |
 | Brand copy (About page) | Editable JSON at `src/content/about.json` and `src/content/brand.json` |
 | Logo / favicon | `public/logo/logo.svg` + `src/app/favicon.ico` |
+| Homepage hero / category photos | Drop a file in `public/hero/` or `public/category-covers/`, no code change |
 
 ---
 
@@ -32,10 +35,12 @@ the reference for how everything works once it's running.
 
 ```
 tandh-studio/
-├── data/                             ← SQLite DB + CSV exports appear here at runtime
+├── data/                             ← CSV exports + local dev secret appear here at runtime
 │   └── README.md
 ├── public/
 │   ├── logo/logo.svg                 ← replace with your real mark
+│   ├── hero/                         ← drop in hero-image.jpg or hero-video.mp4
+│   ├── category-covers/              ← drop in <category-slug>.jpg
 │   └── products/
 │       ├── fabric/kala-cotton-01/{metadata.json, image1.jpg, ...}
 │       ├── shirts/bhujodi-shirt-01/{...}
@@ -61,17 +66,19 @@ tandh-studio/
 │   │   ├── cart/CartDrawer.tsx
 │   │   ├── product/ (ProductCard, ProductGrid, CategoryBrowser, ProductDetail, MoqStepper, ImageCarousel, CraftAccordion, SustainabilityBadges)
 │   │   ├── checkout/CheckoutForm.tsx
-│   │   ├── auth/ (LoginForm, SignupForm)
+│   │   ├── auth/ (LoginForm, SignupForm, PasswordInput)
 │   │   └── home/ (Hero, StorySection, CategoryTeaser)
 │   ├── lib/
-│   │   ├── db.ts                     ← SQLite connection + schema
+│   │   ├── db.ts                     ← Postgres connection pool + schema
 │   │   ├── userStore.ts, orderStore.ts
+│   │   ├── stockStore.ts             ← live stock, decremented on order confirmation
 │   │   ├── orderValidation.ts        ← re-prices/re-validates every order server-side
 │   │   ├── csvExport.ts
 │   │   ├── auth.ts                   ← NextAuth config
 │   │   ├── cartStore.tsx             ← cart Context + localStorage
 │   │   ├── paymentConfig.ts          ← UPI / Google Pay / PhonePe / Paytm / Razorpay
-│   │   └── productLoader.ts          ← reads public/products/ from disk
+│   │   ├── mediaLookup.ts            ← hero/category-cover file auto-detection
+│   │   └── productLoader.ts          ← reads public/products/ from disk, overlays live stock
 │   ├── content/
 │   │   ├── about.json                ← edit this to change the About page
 │   │   └── brand.json                ← site name, contact, footer, wholesale blurb
@@ -130,6 +137,48 @@ MOQ is enforced in three places: the stepper UI, the cart drawer, and
 again inside `/api/checkout` against the real metadata.json on disk —
 so a tampered request body can't undercut it.
 
+**About that `"stock": 10` field** — it only seeds the *initial* count
+the very first time a product is loaded. From then on, the live,
+current stock lives in the database and decreases automatically as
+orders are confirmed (see "Stock management" below). Editing the
+number in `metadata.json` later has no effect once that's happened —
+restocking is a database update, not a file edit. This is intentional:
+stock needs to change in real time as orders come in, which a static
+file can't do safely.
+
+---
+
+## Stock management
+
+Each product's live stock count lives in the `product_stock` table
+(separate from the static catalog content in `metadata.json`, which
+only provides the *starting* number). It decreases automatically the
+moment an order is confirmed:
+
+- **UPI orders**: the moment the customer submits their UTR and lands
+  on the "Order Received" confirmation page.
+- **Razorpay orders**: the moment the payment signature is verified.
+
+Each order can only trigger a decrement once, even if a request is
+retried or a UTR is resubmitted — guarded by checking the order hasn't
+already moved past `pending_payment` before decrementing.
+
+Stock is also enforced at checkout: ordering more than what's currently
+available is rejected server-side with a clear error, the same way an
+MOQ violation is. The product page also disables "Add to Bag" entirely
+once stock hits zero, and shows an "Out of Stock" badge on the grid
+card.
+
+**To restock a product**, update the database directly — there's no
+admin UI for this yet:
+```sql
+UPDATE product_stock SET stock = 50
+WHERE category = 'fabric' AND product_id = 'kala-cotton-01';
+```
+Run that against your `DATABASE_URL` using any Postgres client (Neon's
+own dashboard has a built-in SQL editor for exactly this), or via
+`psql` if you have it installed locally.
+
 ---
 
 ## Authentication
@@ -177,14 +226,18 @@ Also set `NEXTAUTH_SECRET` (any long random string — `openssl rand -base64 32`
 
 ## Database & spreadsheet access
 
-Everything is stored in a real SQLite database at `data/tandh.db`,
-using Node's built-in `node:sqlite` module — no separate database
-server, no native module to compile, just a single file. Open it with
-any SQLite browser tool, or:
+Users, orders, and live stock are stored in **Postgres** — a real,
+standard SQL database, not a proprietary format. The app talks to it
+through the plain `pg` driver, so it works with literally any Postgres
+provider: a free [Neon](https://neon.tech) project (recommended — see
+`.env.local.example`), Supabase, Render Postgres, or a self-hosted
+instance. Swapping providers later is purely a `DATABASE_URL` change.
 
 ```bash
-sqlite3 data/tandh.db "SELECT * FROM orders;"
+psql "$DATABASE_URL" -c "SELECT * FROM orders;"
 ```
+(Neon's own dashboard also has a built-in SQL editor if you'd rather
+not install `psql` locally.)
 
 **For day-to-day use, you don't need SQL at all.** Two CSV files are
 regenerated automatically every time something changes:
@@ -193,15 +246,22 @@ regenerated automatically every time something changes:
 - `data/orders.csv` — every order, with items and shipping address
   flattened into readable columns, plus payment status
 
-Open either directly in Excel or Google Sheets. If you'd rather
-download them remotely instead of opening the file on disk (e.g. from
-your phone while the server runs on your laptop), set `ADMIN_EXPORT_KEY`
-in `.env.local` and visit:
+Open either directly in Excel or Google Sheets. These are a convenience
+export, not the source of truth — the database is authoritative, so
+it's fine if this local file doesn't survive a restart on a host with
+an ephemeral filesystem; it's just regenerated from the database again
+on the next write.
+
+If you'd rather download them remotely instead of opening the file on
+disk (e.g. from your phone while the server runs elsewhere), set
+`ADMIN_EXPORT_KEY` in `.env.local` and visit:
 
 ```
-http://<your-ip>:3000/api/admin/export/users?key=<your key>
-http://<your-ip>:3000/api/admin/export/orders?key=<your key>
+https://<your-domain>/api/admin/export/users?key=<your key>
+https://<your-domain>/api/admin/export/orders?key=<your key>
 ```
+These generate the CSV directly from the database on each request, so
+they work identically whether or not the local disk persisted anything.
 
 These contain real names, emails, and shipping addresses — keep the key
 private, and don't deploy without setting it to something non-guessable.
@@ -209,6 +269,7 @@ private, and don't deploy without setting it to something non-guessable.
 ---
 
 ## Payments
+
 
 **Cash on delivery does not exist in this codebase** — there's no
 status, button, or code path for it anywhere.
@@ -324,9 +385,9 @@ in practice it's: commit, push, wait for the build to finish, refresh.
 | Styling | Tailwind CSS, custom earthy palette |
 | Icons | lucide-react |
 | Auth | NextAuth.js (Google + email/password, JWT sessions) |
-| Database | SQLite via Node's built-in `node:sqlite` |
+| Database | Postgres via `pg` (free Neon project recommended) |
 | State | React Context + localStorage (cart only — never auth) |
-| Product data | Local filesystem (no DB needed for the catalog) |
+| Product catalog | Local filesystem (stock count lives in the database, everything else doesn't need a DB) |
 | Payments | UPI deep links + Razorpay |
 | Language | TypeScript |
 
@@ -336,12 +397,19 @@ in practice it's: commit, push, wait for the build to finish, refresh.
 
 - Set every variable from `.env.local.example` in your hosting
   platform's environment variable manager — never commit `.env.local`.
-- `data/tandh.db` and the CSV files need a writable, **persistent**
-  filesystem. Don't deploy to a purely serverless/ephemeral platform
-  (most "Edge" runtimes, or containers without a mounted volume) and
-  expect the database to survive a redeploy — a small VPS, a
-  traditional Node host, or a platform with persistent disk/volume
-  support is what this needs.
+- Because the database is now a separate, persistent Postgres instance
+  (Neon or otherwise) rather than a local file, **the app itself no
+  longer needs a persistent disk to keep real data** — you can deploy
+  it to genuinely ephemeral/ serverless hosts (including free tiers
+  that reset their local filesystem on every restart) and your users
+  and orders still survive, since they never lived on that local disk
+  to begin with. See DEPLOY.md.
+- `generateStaticParams` for product pages queries the database at
+  *build* time (to read live stock), so `DATABASE_URL` needs to be set
+  and reachable during the build step, not just at runtime — most
+  platforms (Render included) make environment variables available to
+  both automatically, but it's worth knowing if a build ever fails with
+  a database connection error.
 - Update the Google OAuth authorized redirect URI and `NEXTAUTH_URL` to
   your real domain once deployed.
 

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getOrder, updateOrder } from "@/lib/orderStore";
+import { decrementStockForOrder } from "@/lib/stockStore";
 
 /**
  * This is the actual "only proceed with the order if payment succeeded"
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing payment verification fields." }, { status: 400 });
   }
 
-  const order = getOrder(orderId);
+  const order = await getOrder(orderId);
   if (!order) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
@@ -58,18 +59,29 @@ export async function POST(req: NextRequest) {
   const signatureValid = expectedSignature === razorpay_signature;
 
   if (!signatureValid) {
-    updateOrder(orderId, { status: "failed" });
+    await updateOrder(orderId, { status: "failed" });
     return NextResponse.json({ error: "Payment signature verification failed." }, { status: 400 });
   }
+
+  // Guard against double-processing: if this order has already moved
+  // past "pending_payment" (e.g. a duplicate/retried request), don't
+  // re-mark it or decrement stock a second time.
+  const alreadyProcessed = order.status !== "pending_payment";
 
   // Only at this point — verified signature — does the order get marked
   // "paid". Nothing earlier in the flow (cart, form, button click) is
   // ever sufficient on its own.
-  const updated = updateOrder(orderId, {
+  const updated = await updateOrder(orderId, {
     status: "paid",
     razorpayOrderId: razorpay_order_id,
     razorpayPaymentId: razorpay_payment_id,
   });
+
+  if (!alreadyProcessed) {
+    await decrementStockForOrder(
+      order.items.map((i) => ({ category: i.category, productId: i.productId, quantity: i.quantity }))
+    );
+  }
 
   return NextResponse.json({ orderId: updated?.orderId, status: updated?.status });
 }
