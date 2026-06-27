@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" rx="0" fill="#F6F1E7"/>
+  <g fill="none" stroke-width="6" stroke-linecap="round">
+    <path d="M20 110 L60 60 L100 110 L140 60 L180 110" stroke="#B85C38" opacity="0.9"/>
+    <path d="M20 140 L60 90 L100 140 L140 90 L180 140" stroke="#2F3C5E" opacity="0.9"/>
+  </g>
+  <text x="100" y="172" text-anchor="middle" font-family="Georgia, serif" font-size="22" fill="#2A2118" letter-spacing="1">tandh</text>
+</svg>
