@@ -21,7 +21,6 @@
   "moq": 1,
   "moqUnit": "pieces",
   "moqStep": 1,
-  "stock": 14,
   "images": ["image1.jpg", "image2.jpg"],
   "featured": true,
   "newArrival": true,

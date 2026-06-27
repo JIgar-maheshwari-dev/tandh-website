@@ -88,11 +88,11 @@ export function TopNav() {
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-ink/60 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 top-0 h-full w-[78%] max-w-xs bg-weave shadow-weave p-6 flex flex-col gap-1 safe-top">
+          <div className="absolute right-0 top-0 h-full w-[78%] max-w-xs bg-weave border-l-2 border-terracotta shadow-2xl p-6 flex flex-col gap-1 safe-top">
             <div className="flex items-center justify-between mb-8">
               <Logo size={30} />
               <button

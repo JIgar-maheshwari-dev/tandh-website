@@ -46,6 +46,12 @@ git push -u origin main
    - **Instance type**: Free
 4. Don't deploy yet — add the environment variables first (next step), then deploy.
 
+This project's build step checks `DATABASE_URL` before doing anything
+else and fails immediately with a clear error if it's missing or
+unreachable — so if you deploy before adding it (next step), Render's
+build log will show exactly that, not a confusing unrelated failure
+further down.
+
 ## 4. Environment variables
 
 In the Render dashboard, under **Environment**, add everything from

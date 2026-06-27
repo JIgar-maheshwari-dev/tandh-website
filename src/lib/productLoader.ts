@@ -27,7 +27,9 @@ function listDirs(dir: string): string[] {
     .filter((name) => isDir(path.join(dir, name)));
 }
 
-function loadProductFolderRaw(category: string, productId: string): Product | null {
+type RawProduct = Omit<Product, "stock">;
+
+function loadProductFolderRaw(category: string, productId: string): RawProduct | null {
   const productDir = path.join(PRODUCTS_DIR, category, productId);
   const metaPath = path.join(productDir, "metadata.json");
   if (!fs.existsSync(metaPath)) return null;
@@ -67,13 +69,13 @@ function loadProductFolderRaw(category: string, productId: string): Product | nu
 export async function getProductById(category: string, productId: string): Promise<Product | null> {
   const product = loadProductFolderRaw(category, productId);
   if (!product) return null;
-  const liveStock = await getLiveStock(category, productId, product.stock);
-  return { ...product, stock: liveStock };
+  const stock = await getLiveStock(category, productId);
+  return { ...product, stock };
 }
 
 /** All products across all category folders, with live stock overlaid. */
 export async function getAllProducts(): Promise<Product[]> {
-  const raw: Product[] = [];
+  const raw: Omit<Product, "stock">[] = [];
   for (const category of listDirs(PRODUCTS_DIR)) {
     for (const productId of listDirs(path.join(PRODUCTS_DIR, category))) {
       const product = loadProductFolderRaw(category, productId);
@@ -81,13 +83,11 @@ export async function getAllProducts(): Promise<Product[]> {
     }
   }
 
-  const stockMap = await getLiveStockMap(
-    raw.map((p) => ({ category: p.category, productId: p.id, initialStock: p.stock }))
-  );
+  const stockMap = await getLiveStockMap(raw.map((p) => ({ category: p.category, productId: p.id })));
 
   return raw.map((p) => ({
     ...p,
-    stock: stockMap.get(`${p.category}/${p.id}`) ?? p.stock,
+    stock: stockMap.get(`${p.category}/${p.id}`) ?? 0,
   }));
 }
 

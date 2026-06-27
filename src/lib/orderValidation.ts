@@ -50,7 +50,7 @@ export async function validateCartItems(items: CartItem[]): Promise<ValidationRe
       continue;
     }
 
-    if (typeof product.stock === "number" && item.quantity > product.stock) {
+    if (item.quantity > product.stock) {
       errors.push(
         product.stock > 0
           ? `"${product.title}" only has ${product.stock} left in stock.`

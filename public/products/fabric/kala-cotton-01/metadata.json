@@ -23,7 +23,6 @@
   "moq": 2,
   "moqUnit": "meters",
   "moqStep": 0.5,
-  "stock": 24,
   "images": ["image1.jpg", "image2.jpg", "image3.jpg"],
   "featured": true,
   "newArrival": false

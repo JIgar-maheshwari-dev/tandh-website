@@ -5,6 +5,10 @@
 :root {
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-body: "Work Sans", system-ui, sans-serif;
+  /* Same reasoning as the colorScheme viewport export in layout.tsx —
+     belt-and-suspenders against mobile browsers auto-dark-moding an
+     unmarked page and recoloring text/backgrounds unpredictably. */
+  color-scheme: light;
 }
 
 html {

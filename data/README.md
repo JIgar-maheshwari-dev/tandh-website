@@ -2,7 +2,13 @@ This folder is intentionally mostly empty in a fresh copy of the
 project. The real database (users, orders, live stock) lives in
 Postgres, not here — see DATABASE_URL in .env.local.
 
-A couple of things still appear here at runtime, though:
+- `seed-stock.sql` — run this once (after the app has run at least
+  once, so the table exists) to give the three bundled demo products
+  some starting stock: `psql "$DATABASE_URL" -f data/seed-stock.sql`.
+  Your own real products start at 0 until you set their stock the same
+  way — see the "Stock management" section in README.md.
+
+A couple of other things appear here at runtime, though:
 
 - `.nextauth-secret` — only created if you haven't set NEXTAUTH_SECRET
   yourself, as a local-dev convenience so sessions survive a server

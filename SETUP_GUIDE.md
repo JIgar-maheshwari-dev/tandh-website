@@ -55,6 +55,11 @@ order data need to survive independently of this one machine.
 That's it — the app creates its own tables automatically the first
 time it runs against that connection string.
 
+**Note:** `npm run dev`, `npm run build`, and `npm start` each
+automatically check that `DATABASE_URL` is set and reachable before
+doing anything else, and fail with a clear message if not — there's no
+"runs locally with nothing configured" mode anymore, by design.
+
 ## 6. Configure environment variables
 
 ```bash
@@ -99,6 +104,11 @@ else to set up.
 
 ## 8. Create your first account and test a full order
 
+0. First, give the demo products some stock — they default to 0 (out
+   of stock) until you do:
+   ```bash
+   psql "$DATABASE_URL" -f data/seed-stock.sql
+   ```
 1. Go to `/signup`, create an account with email + password.
 2. Browse to a product, add it to your bag (note the MOQ floor and the
    stock count shown on the product page).
@@ -169,6 +179,7 @@ just before `npm start`.
 | Google sign-in redirects to an error page | Authorized redirect URI in Google Cloud Console doesn't exactly match `NEXTAUTH_URL` + `/api/auth/callback/google` |
 | New product doesn't show up | Invalid JSON in `metadata.json` — validate with `cat metadata.json \| python3 -m json.tool` |
 | Stock not decreasing after a test order | Confirm the order actually reached "pending_verification"/"paid" — a `pending_payment` order (abandoned before paying) never decrements stock, by design |
+| A product shows "Out of Stock" and can't be added to cart | Expected for any product whose stock hasn't been explicitly set yet — run `data/seed-stock.sql` for the demo products, or set your own product's stock manually (see README.md) |
 | `data/orders.csv` missing | It's just a convenience mirror — the real data is in Postgres regardless; place an order and it reappears, or hit `/api/admin/export/orders?key=...` to regenerate it on demand |
 | Phone can't reach `http://<ip>:3000` | Different Wi-Fi networks, firewall, or router AP isolation |
 

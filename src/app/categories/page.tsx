@@ -1,6 +1,7 @@
 import { CategoryBrowser } from "@/components/product/CategoryBrowser";
 import { getAllProducts, getCategories } from "@/lib/productLoader";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "All Products — tandh studio" };
 
 export default async function AllProductsPage() {

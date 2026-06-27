@@ -75,10 +75,11 @@ async function createSchema() {
     );
   `);
 
-  // Live stock per product. metadata.json's "stock" field only seeds
-  // the INITIAL value the first time a product is seen — after that,
-  // this table is the authoritative current count, decremented on each
-  // confirmed order. See stockStore.ts.
+  // Live stock per product. This is the ONLY place stock numbers live
+  // — metadata.json has no stock field at all. A product never seen
+  // before gets a row created at 0 the first time it's looked up (see
+  // stockStore.ts), so a brand new product defaults to "out of stock"
+  // rather than silently unlimited.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS product_stock (
       category TEXT NOT NULL,
@@ -94,10 +95,27 @@ async function createSchema() {
  * Schema creation only needs to run once per process — this caches the
  * in-flight/completed promise on the Node global so concurrent requests
  * during cold start don't race to create the same tables.
+ *
+ * This is also the point where a missing/unreachable/wrong
+ * DATABASE_URL surfaces — deliberately not swallowed or defaulted
+ * anywhere. The app assumes from the very first request (and from the
+ * very first `npm run build`) that a working Postgres connection
+ * exists; if it doesn't, every page and API route that touches data
+ * will fail loudly with the message below rather than silently
+ * pretending there's no data.
  */
 export function ensureSchema(): Promise<void> {
   if (!global.__tandhSchemaReady) {
-    global.__tandhSchemaReady = createSchema();
+    global.__tandhSchemaReady = createSchema().catch((err) => {
+      global.__tandhSchemaReady = undefined; // allow retry on the next request
+      console.error(
+        "\n[tandh studio] Could not connect to the database.\n" +
+          "Check that DATABASE_URL in .env.local is set and points to a real, " +
+          "reachable Postgres instance (e.g. a Neon project) — see .env.local.example.\n" +
+          `Underlying error: ${err instanceof Error ? err.message : String(err)}\n`
+      );
+      throw err;
+    });
   }
   return global.__tandhSchemaReady;
 }

@@ -20,6 +20,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1, // prevents iOS auto-zoom on input focus
   viewportFit: "cover", // enables env(safe-area-inset-*) on notched phones
+  // This site has no dark theme — without this, some Android browsers
+  // (Chrome's "force dark" / system dark-mode heuristics) will try to
+  // auto-recolor pages that don't declare a scheme, which can produce
+  // exactly the "menu text unreadable against the background" effect
+  // on some phones while looking fine on desktop. This opts out of
+  // that guessing entirely.
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

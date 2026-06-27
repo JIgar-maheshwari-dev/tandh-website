@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { ProductDetail } from "@/components/product/ProductDetail";
-import { getAllProducts, getProductById } from "@/lib/productLoader";
+import { getProductById } from "@/lib/productLoader";
 
-export async function generateStaticParams() {
-  const products = await getAllProducts();
-  return products.map((p) => ({ category: p.category, productId: p.id }));
-}
+// This is the page that was showing stale stock — it used to be
+// statically pre-rendered at build time (via generateStaticParams),
+// which baked in whatever the stock count happened to be at build
+// time. Forcing dynamic rendering means every visit re-reads the real,
+// current stock from the database.
+export const dynamic = "force-dynamic";
 
 export default async function ProductPage({
   params,

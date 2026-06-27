@@ -36,7 +36,10 @@ the reference for how everything works once it's running.
 ```
 tandh-studio/
 ├── data/                             ← CSV exports + local dev secret appear here at runtime
-│   └── README.md
+│   ├── README.md
+│   └── seed-stock.sql                ← run once to seed demo product stock
+├── scripts/
+│   └── check-db.mjs                  ← pre-flight DATABASE_URL check (runs before dev/build/start)
 ├── public/
 │   ├── logo/logo.svg                 ← replace with your real mark
 │   ├── hero/                         ← drop in hero-image.jpg or hero-video.mp4
@@ -58,6 +61,7 @@ tandh-studio/
 │   │   └── api/
 │   │       ├── auth/[...nextauth]/route.ts, auth/register/route.ts
 │   │       ├── products/route.ts
+│   │       ├── stock/route.ts        ← live stock check used by the cart drawer
 │   │       ├── checkout/route.ts, checkout/confirm-upi/route.ts
 │   │       ├── razorpay/order/route.ts, razorpay/verify/route.ts
 │   │       └── admin/export/users/route.ts, admin/export/orders/route.ts
@@ -115,7 +119,6 @@ tandh-studio/
   "moq": 1,
   "moqUnit": "pieces",
   "moqStep": 1,
-  "stock": 10,
   "images": ["image1.jpg", "image2.jpg"],
   "featured": true,
   "newArrival": false,
@@ -125,8 +128,8 @@ tandh-studio/
 
 Delete the folder to remove a product. Restart `npm run dev` (or just
 refresh — the dev server picks up new folders on the next request) to
-see changes. No database entry needed for products — they're read live
-from disk.
+see changes. No database entry needed for the catalog content above —
+it's read live from disk.
 
 **Fabric-style MOQ** (minimum 2 metres, half-metre increments):
 ```json
@@ -137,23 +140,28 @@ MOQ is enforced in three places: the stepper UI, the cart drawer, and
 again inside `/api/checkout` against the real metadata.json on disk —
 so a tampered request body can't undercut it.
 
-**About that `"stock": 10` field** — it only seeds the *initial* count
-the very first time a product is loaded. From then on, the live,
-current stock lives in the database and decreases automatically as
-orders are confirmed (see "Stock management" below). Editing the
-number in `metadata.json` later has no effect once that's happened —
-restocking is a database update, not a file edit. This is intentional:
-stock needs to change in real time as orders come in, which a static
-file can't do safely.
+**Notice there's no `stock` field above** — it's been removed entirely
+on purpose. See "Stock management" below: every product's stock is
+purely a database value, full stop. A new product folder defaults to
+**0 (out of stock)** the moment it's first viewed, until you explicitly
+set a real number in the database. There's no metadata fallback and no
+"unlimited if not specified" behavior, by design — a product can never
+be silently oversold just because nobody remembered to set its stock.
 
 ---
 
 ## Stock management
 
-Each product's live stock count lives in the `product_stock` table
-(separate from the static catalog content in `metadata.json`, which
-only provides the *starting* number). It decreases automatically the
-moment an order is confirmed:
+Stock lives **only** in the `product_stock` table — never in
+`metadata.json`, never anywhere on disk. Every page that shows stock
+(`/`, `/categories`, `/categories/[category]`, and the product detail
+page) is forced to render fresh on every single request
+(`export const dynamic = "force-dynamic"`) specifically so this is
+never frozen as stale build-time HTML — if you update stock directly in
+the database, the very next page load reflects it immediately, with no
+rebuild and no redeploy needed.
+
+It decreases automatically the moment an order is confirmed:
 
 - **UPI orders**: the moment the customer submits their UTR and lands
   on the "Order Received" confirmation page.
@@ -162,6 +170,18 @@ moment an order is confirmed:
 Each order can only trigger a decrement once, even if a request is
 retried or a UTR is resubmitted — guarded by checking the order hasn't
 already moved past `pending_payment` before decrementing.
+
+It's also enforced **before** that point, in two more places:
+- **The cart drawer** fetches live stock the moment it's opened (via
+  `GET /api/stock`) and caps the "+" button at whatever's actually
+  available right now — not whatever was available when the item was
+  first added. If stock has since dropped below what's already in the
+  bag, a clear warning appears and checkout is blocked until the
+  quantity is adjusted down.
+- **`/api/checkout`** re-checks stock server-side regardless of what
+  the cart UI did or didn't catch, the same way price and MOQ are
+  re-checked — the authoritative limit is always the live database
+  value at the moment of checkout, never anything cached client-side.
 
 Stock is also enforced at checkout: ordering more than what's currently
 available is rejected server-side with a clear error, the same way an
@@ -178,6 +198,15 @@ WHERE category = 'fabric' AND product_id = 'kala-cotton-01';
 Run that against your `DATABASE_URL` using any Postgres client (Neon's
 own dashboard has a built-in SQL editor for exactly this), or via
 `psql` if you have it installed locally.
+
+**For the three demo products bundled with this project**, there's a
+ready-made script instead of typing that by hand three times:
+```bash
+psql "$DATABASE_URL" -f data/seed-stock.sql
+```
+This only works after the app has run at least once (the
+`product_stock` table needs to already exist) — run the dev server
+once first, then run this.
 
 ---
 
@@ -232,6 +261,16 @@ through the plain `pg` driver, so it works with literally any Postgres
 provider: a free [Neon](https://neon.tech) project (recommended — see
 `.env.local.example`), Supabase, Render Postgres, or a self-hosted
 instance. Swapping providers later is purely a `DATABASE_URL` change.
+
+**This app assumes a working database connection from the very first
+moment, full stop.** `npm run dev`, `npm run build`, and `npm start`
+each run a quick connectivity check first (`scripts/check-db.mjs`,
+wired in as `predev`/`prebuild`/`prestart`) and refuse to continue with
+a clear, actionable error if `DATABASE_URL` is missing or unreachable
+— rather than letting a misconfigured deploy go live and silently
+treat every product as having no stock. If you ever see "Database
+check failed" in your terminal or in a deploy log, that's this check
+doing its job, not a separate bug.
 
 ```bash
 psql "$DATABASE_URL" -c "SELECT * FROM orders;"
@@ -374,6 +413,17 @@ in practice it's: commit, push, wait for the build to finish, refresh.
 - `env(safe-area-inset-*)` support for notched phones.
 - `maximum-scale=1` in the viewport meta tag prevents iOS auto-zoom on
   input focus.
+- The site declares `color-scheme: light` (both via Next's `viewport`
+  export and in CSS) — without this, some Android browsers' automatic
+  dark-mode heuristics can recolor an unmarked page unpredictably,
+  which is what was causing the mobile hamburger menu to sometimes
+  look like unreadable text mixed into the background. The menu panel
+  itself is also a fully opaque background with a strong shadow and an
+  accent border, and the backdrop behind it is blurred, so it reads as
+  a distinct layer above the page regardless.
+- The cart drawer fetches live stock the moment it opens and caps each
+  item's "+" button at what's actually available — see "Stock
+  management" above.
 
 ---
 

@@ -1,58 +1,50 @@
-// Server-only. Live, current stock per product. A product's
-// `metadata.json` "stock" field is only ever used as the INITIAL seed
-// value the first time that product is loaded — from then on, this
-// table is authoritative, decremented as orders are confirmed.
+// Server-only. The database is the ONLY place stock numbers live —
+// there is deliberately no fallback to anything in metadata.json. A
+// product the database has never seen gets a row created at 0 (out of
+// stock) the first time it's looked up, rather than being treated as
+// unlimited. This is a deliberate fail-safe: a brand new product can
+// never be accidentally oversold just because nobody remembered to set
+// its stock yet — it simply can't be ordered until you explicitly set
+// a real number.
 //
-// Editing the "stock" number in metadata.json after that point has no
-// effect, since the database has already taken over. To manually adjust
-// stock later (e.g. a restock), update the database directly:
+// To set or change stock, update the database directly — there's no
+// admin UI for this yet:
 //
 //   UPDATE product_stock SET stock = 50
 //   WHERE category = 'fabric' AND product_id = 'kala-cotton-01';
 //
-// (run that against your DATABASE_URL with any Postgres client).
+// (run that against your DATABASE_URL with any Postgres client; Neon's
+// dashboard has a built-in SQL editor for exactly this). See also
+// data/seed-stock.sql for the demo products included with this project.
 import { query } from "./db";
 
-/**
- * Returns the live stock count for a product, seeding it from
- * `initialStock` (metadata.json's value) the first time this product
- * is seen. Safe to call on every page load — seeding only happens once
- * per product thanks to `ON CONFLICT DO NOTHING`.
- */
-export async function getLiveStock(
-  category: string,
-  productId: string,
-  initialStock: number | undefined
-): Promise<number | undefined> {
-  if (initialStock === undefined) return undefined; // product doesn't track stock at all
-
+/** Live stock for a single product — always a definite number, defaults to 0. */
+export async function getLiveStock(category: string, productId: string): Promise<number> {
   await query(
     `INSERT INTO product_stock (category, product_id, stock)
-     VALUES ($1, $2, $3)
+     VALUES ($1, $2, 0)
      ON CONFLICT (category, product_id) DO NOTHING`,
-    [category, productId, initialStock]
+    [category, productId]
   );
 
   const rows = await query<{ stock: number }>(
     `SELECT stock FROM product_stock WHERE category = $1 AND product_id = $2`,
     [category, productId]
   );
-  return rows[0]?.stock;
+  return rows[0]?.stock ?? 0;
 }
 
 /**
- * Batch version, used when rendering a product grid — avoids one
- * round-trip per card.
+ * Batch version, used when rendering a product grid or checking a
+ * whole cart — avoids one round-trip per item.
  */
 export async function getLiveStockMap(
-  items: { category: string; productId: string; initialStock: number | undefined }[]
+  items: { category: string; productId: string }[]
 ): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   for (const item of items) {
-    const stock = await getLiveStock(item.category, item.productId, item.initialStock);
-    if (stock !== undefined) {
-      map.set(`${item.category}/${item.productId}`, stock);
-    }
+    const stock = await getLiveStock(item.category, item.productId);
+    map.set(`${item.category}/${item.productId}`, stock);
   }
   return map;
 }

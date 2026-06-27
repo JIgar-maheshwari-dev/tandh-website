@@ -137,11 +137,9 @@ export function ProductDetail({ product }: { product: Product }) {
             </button>
           </div>
 
-          {product.stock !== undefined && (
-            <p className="text-xs text-bark mt-3">
-              {product.stock > 0 ? `${product.stock} in stock` : "Currently out of stock"}
-            </p>
-          )}
+          <p className="text-xs text-bark mt-3">
+            {product.stock > 0 ? `${product.stock} in stock` : "Currently out of stock"}
+          </p>
 
           <CraftAccordion items={accordionItems} />
           {product.details && product.details.length > 0 && (

@@ -5,6 +5,11 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { WeaveDivider } from "@/components/ui/WeaveDivider";
 import { getFeaturedProducts } from "@/lib/productLoader";
 
+// Featured products show live stock (e.g. "Out of Stock" badges) —
+// this page must re-read the database on every request, never be
+// frozen as static HTML from build time.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const featured = await getFeaturedProducts(8);
 

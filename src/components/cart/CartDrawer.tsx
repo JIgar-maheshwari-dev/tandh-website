@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { X, Plus, Minus, Trash2 } from "lucide-react";
@@ -10,7 +11,44 @@ export function CartDrawer() {
   const { items, isOpen, closeCart, updateQuantity, removeItem, totalPrice, hasMoqViolation } =
     useCart();
 
+  // Stock can change at any time (someone else buying the last units,
+  // you restocking, etc.) — so it's fetched fresh from the database
+  // every time the cart is opened, not snapshotted from whenever the
+  // item was first added. Keyed as "category/productId".
+  const [liveStock, setLiveStock] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!isOpen || items.length === 0) return;
+
+    const itemsParam = items.map((i) => `${i.category}:${i.productId}`).join(",");
+    let cancelled = false;
+
+    fetch(`/api/stock?items=${encodeURIComponent(itemsParam)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data?.stock) setLiveStock(data.stock);
+      })
+      .catch(() => {
+        // If the check fails, leave whatever stock info we already
+        // have — checkout's own server-side validation is the real
+        // backstop regardless of whether this convenience check ran.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-check whenever the drawer opens or the set of items changes
+    // (not on every quantity tick, to avoid refetching on every click).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, items.length]);
+
   if (!isOpen) return null;
+
+  const stockKey = (item: { category: string; productId: string }) => `${item.category}/${item.productId}`;
+  const hasStockViolation = items.some((item) => {
+    const stock = liveStock[stockKey(item)];
+    return stock !== undefined && item.quantity > stock;
+  });
 
   return (
     <div className="fixed inset-0 z-50">
@@ -51,6 +89,9 @@ export function CartDrawer() {
             <ul className="space-y-5">
               {items.map((item) => {
                 const atFloor = item.quantity <= item.moq;
+                const stock = liveStock[stockKey(item)];
+                const atStockCeiling = stock !== undefined && item.quantity >= stock;
+                const overStock = stock !== undefined && item.quantity > stock;
                 return (
                   <li key={`${item.productId}-${item.size ?? ""}`} className="flex gap-3">
                     <div className="relative h-20 w-16 shrink-0 rounded overflow-hidden bg-weave-200">
@@ -85,8 +126,9 @@ export function CartDrawer() {
                           onClick={() =>
                             updateQuantity(item.productId, item.quantity + item.moqStep, item.size)
                           }
+                          disabled={atStockCeiling}
                           aria-label="Increase quantity"
-                          className="tap-target flex items-center justify-center border border-line rounded"
+                          className="tap-target flex items-center justify-center border border-line rounded disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -102,6 +144,16 @@ export function CartDrawer() {
                       {atFloor && (
                         <p className="mt-1 text-[11px] text-terracotta">
                           Minimum order: {item.moq} {item.moqUnit ?? "units"}
+                        </p>
+                      )}
+                      {overStock && (
+                        <p className="mt-1 text-[11px] text-terracotta">
+                          Only {stock} {item.moqUnit ?? "units"} left — lower the quantity to continue.
+                        </p>
+                      )}
+                      {!overStock && atStockCeiling && stock !== undefined && stock > 0 && (
+                        <p className="mt-1 text-[11px] text-bark">
+                          Only {stock} {item.moqUnit ?? "units"} available.
                         </p>
                       )}
                     </div>
@@ -123,11 +175,26 @@ export function CartDrawer() {
                 One or more items are below their minimum order quantity.
               </p>
             )}
+            {hasStockViolation && (
+              <p className="text-xs text-terracotta mb-2">
+                One or more items exceed what&apos;s currently in stock — adjust quantities above to continue.
+              </p>
+            )}
             <Link
-              href="/checkout"
-              onClick={closeCart}
-              aria-disabled={hasMoqViolation}
-              className="block w-full text-center bg-indigo text-weave py-3.5 rounded uppercase text-sm tracking-widest2 tap-target hover:bg-indigo-900 transition-colors"
+              href={hasStockViolation ? "#" : "/checkout"}
+              onClick={(e) => {
+                if (hasStockViolation) {
+                  e.preventDefault();
+                  return;
+                }
+                closeCart();
+              }}
+              aria-disabled={hasMoqViolation || hasStockViolation}
+              className={`block w-full text-center py-3.5 rounded uppercase text-sm tracking-widest2 tap-target transition-colors ${
+                hasStockViolation
+                  ? "bg-line text-bark cursor-not-allowed"
+                  : "bg-indigo text-weave hover:bg-indigo-900"
+              }`}
             >
               Checkout
             </Link>

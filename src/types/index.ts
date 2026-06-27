@@ -1,5 +1,8 @@
 // Shape of each product's metadata.json file.
 // This is the ONLY file you edit to add/change a product's data.
+// Deliberately NO "stock" field here — stock is never static catalog
+// content, it's live state that only the database is allowed to own.
+// See src/lib/stockStore.ts.
 export interface ProductMetadata {
   id: string;
   title: string;
@@ -18,7 +21,6 @@ export interface ProductMetadata {
   moq: number;
   moqUnit?: string;
   moqStep: number;
-  stock?: number;
   images: string[];
   featured?: boolean;
   newArrival?: boolean;
@@ -26,9 +28,14 @@ export interface ProductMetadata {
   badges?: string[]; // e.g. "100% Organic", "Rain-fed Crop", "Artisan Made", "Zero Chemical Dyes"
 }
 
-// Product as loaded from disk, with resolved public image paths.
+// Product as loaded from disk, with resolved public image paths AND
+// live stock overlaid from the database. `stock` is always a definite
+// number here — never undefined, never read from metadata.json. A
+// product the database has never seen before defaults to 0 (out of
+// stock) rather than silently being treated as unlimited.
 export interface Product extends ProductMetadata {
   imagePaths: string[];
+  stock: number;
 }
 
 export interface CartItem {

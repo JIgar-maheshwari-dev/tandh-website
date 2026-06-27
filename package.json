@@ -6,8 +6,11 @@
     "node": ">=18.18.0"
   },
   "scripts": {
+    "predev": "node scripts/check-db.mjs",
     "dev": "next dev -H 0.0.0.0",
+    "prebuild": "node scripts/check-db.mjs",
     "build": "next build",
+    "prestart": "node scripts/check-db.mjs",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "lint": "next lint"
   },

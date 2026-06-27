@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { CategoryBrowser } from "@/components/product/CategoryBrowser";
 import { getAllProducts, getCategories } from "@/lib/productLoader";
 
-export function generateStaticParams() {
-  return getCategories().map((category) => ({ category }));
-}
+// Shows live stock per product — must re-read the database on every
+// request, not be frozen as static HTML from build time.
+export const dynamic = "force-dynamic";
 
 export default async function CategoryPage({ params }: { params: { category: string } }) {
   const categories = getCategories();
